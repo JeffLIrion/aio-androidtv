@@ -189,10 +189,10 @@ class ADBPython(object):
             _LOGGER.debug("ADB command not sent to %s:%d because adb-shell connection is not established: pull(%s, %s)", self.host, self.port, local_path, device_path)
             return
 
-        async with _acquire(self._adb_lock):
-            _LOGGER.debug("Sending command to %s:%d via adb-shell: pull(%s, %s)", self.host, self.port, local_path, device_path)
-            await self._adb.pull(device_path, local_path)
-            return
+        # async with _acquire(self._adb_lock):
+        _LOGGER.debug("Sending command to %s:%d via adb-shell: pull(%s, %s)", self.host, self.port, local_path, device_path)
+        await self._adb.pull(device_path, local_path)
+        return
 
     async def push(self, local_path, device_path):
         """Push a file to the device using the Python ADB implementation.
@@ -209,10 +209,10 @@ class ADBPython(object):
             _LOGGER.debug("ADB command not sent to %s:%d because adb-shell connection is not established: push(%s, %s)", self.host, self.port, local_path, device_path)
             return
 
-        async with _acquire(self._adb_lock):
-            _LOGGER.debug("Sending command to %s:%d via adb-shell: push(%s, %s)", self.host, self.port, local_path, device_path)
-            await self._adb.push(local_path, device_path)
-            return
+        # async with _acquire(self._adb_lock):
+        _LOGGER.debug("Sending command to %s:%d via adb-shell: push(%s, %s)", self.host, self.port, local_path, device_path)
+        await self._adb.push(local_path, device_path)
+        return
 
     async def screencap(self):
         """Take a screenshot using the Python ADB implementation.
@@ -227,12 +227,12 @@ class ADBPython(object):
             _LOGGER.debug("ADB screencap not taken from %s:%d because adb-shell connection is not established", self.host, self.port)
             return None
 
-        async with _acquire(self._adb_lock):
-            _LOGGER.debug("Taking screencap from %s:%d via adb-shell", self.host, self.port)
-            result = await self._adb.shell("screencap -p", decode=False)
-            if result[5:6] == b"\r":
-                return result.replace(b"\r\n", b"\n")
-            return result
+        # async with _acquire(self._adb_lock):
+        _LOGGER.debug("Taking screencap from %s:%d via adb-shell", self.host, self.port)
+        result = await self._adb.shell("screencap -p", decode=False)
+        if result[5:6] == b"\r":
+            return result.replace(b"\r\n", b"\n")
+        return result
 
     async def shell(self, cmd):
         """Send an ADB command using the Python ADB implementation.
@@ -252,6 +252,6 @@ class ADBPython(object):
             _LOGGER.debug("ADB command not sent to %s:%d because adb-shell connection is not established: %s", self.host, self.port, cmd)
             return None
 
-        async with _acquire(self._adb_lock):
-            _LOGGER.debug("Sending command to %s:%d via adb-shell: %s", self.host, self.port, cmd)
-            return await self._adb.shell(cmd)
+        # async with _acquire(self._adb_lock):
+        _LOGGER.debug("Sending command to %s:%d via adb-shell: %s", self.host, self.port, cmd)
+        return await self._adb.shell(cmd)
