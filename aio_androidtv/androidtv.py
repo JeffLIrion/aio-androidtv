@@ -78,7 +78,7 @@ class AndroidTV(BaseTV):
 
         # Check if screen saver is on
         elif not awake:
-            state = constants.STATE_IDLE
+            state = constants.STATE_STANDBY
 
         else:
             # Get the running apps
@@ -92,7 +92,7 @@ class AndroidTV(BaseTV):
 
             # ATV Launcher
             if current_app in [constants.APP_ATV_LAUNCHER, None]:
-                state = constants.STATE_STANDBY
+                state = constants.STATE_IDLE
 
             # BELL Fibe
             elif current_app == constants.APP_BELL_FIBE:
@@ -105,7 +105,7 @@ class AndroidTV(BaseTV):
                 elif media_session_state == 3:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # Plex
             elif current_app == constants.APP_PLEX:
@@ -115,7 +115,7 @@ class AndroidTV(BaseTV):
                     else:
                         state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # TVheadend
             elif current_app == constants.APP_TVHEADEND:
@@ -124,7 +124,7 @@ class AndroidTV(BaseTV):
                 elif wake_lock_size == 6:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # VLC
             elif current_app == constants.APP_VLC:
@@ -133,7 +133,7 @@ class AndroidTV(BaseTV):
                 elif media_session_state == 3:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # VRV
             elif current_app == constants.APP_VRV:
@@ -146,7 +146,7 @@ class AndroidTV(BaseTV):
                 elif media_session_state == 3:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # Get the state from `media_session_state`
             elif media_session_state:
@@ -155,7 +155,7 @@ class AndroidTV(BaseTV):
                 elif media_session_state == 3:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # Get the state from `audio_state`
             elif audio_state != constants.STATE_IDLE:
@@ -168,7 +168,7 @@ class AndroidTV(BaseTV):
                 elif wake_lock_size == 2:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
         return state, current_app, running_apps, audio_output_device, is_volume_muted, volume_level
 

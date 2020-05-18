@@ -73,7 +73,7 @@ class FireTV(BaseTV):
 
         # Check if screen saver is on
         elif not awake:
-            state = constants.STATE_IDLE
+            state = constants.STATE_STANDBY
             current_app = None
             running_apps = None
 
@@ -89,7 +89,7 @@ class FireTV(BaseTV):
 
             # Determine the state based on the `current_app`
             if current_app in [constants.APP_FIRETV_PACKAGE_LAUNCHER, constants.APP_FIRETV_PACKAGE_SETTINGS, None]:
-                state = constants.STATE_STANDBY
+                state = constants.STATE_IDLE
 
             # Amazon Video
             elif current_app == constants.APP_AMAZON_VIDEO:
@@ -98,14 +98,14 @@ class FireTV(BaseTV):
                 elif media_session_state == 3:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # Firefox
             elif current_app == constants.APP_FIREFOX:
                 if wake_lock_size == 3:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # Hulu
             elif current_app == constants.APP_HULU:
@@ -114,7 +114,7 @@ class FireTV(BaseTV):
                 elif wake_lock_size == 2:
                     state = constants.STATE_PAUSED
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # Jellyfin
             elif current_app == constants.APP_JELLYFIN_TV:
@@ -130,7 +130,7 @@ class FireTV(BaseTV):
                 elif media_session_state == 3:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # Plex
             elif current_app == constants.APP_PLEX:
@@ -140,7 +140,7 @@ class FireTV(BaseTV):
                     else:
                         state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # Sport 1
             elif current_app == constants.APP_SPORT1:
@@ -149,7 +149,7 @@ class FireTV(BaseTV):
                 elif wake_lock_size == 3:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # Spotify
             elif current_app == constants.APP_SPOTIFY:
@@ -158,7 +158,7 @@ class FireTV(BaseTV):
                 elif media_session_state == 3:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # Twitch
             elif current_app == constants.APP_TWITCH:
@@ -169,7 +169,7 @@ class FireTV(BaseTV):
                 elif media_session_state == 4:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # Waipu TV
             elif current_app == constants.APP_WAIPU_TV:
@@ -178,7 +178,7 @@ class FireTV(BaseTV):
                 elif wake_lock_size == 3:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # Get the state from `media_session_state`
             elif media_session_state:
@@ -187,7 +187,7 @@ class FireTV(BaseTV):
                 elif media_session_state == 3:
                     state = constants.STATE_PLAYING
                 else:
-                    state = constants.STATE_STANDBY
+                    state = constants.STATE_IDLE
 
             # Get the state from `wake_lock_size`
             else:
