@@ -335,6 +335,10 @@ class TestBaseTVPython(unittest.TestCase):
             device_properties = await self.btv.get_device_properties()
             self.assertDictEqual({}, device_properties)
 
+        with patchers.patch_shell('')[self.PATCH_KEY]:
+            device_properties = await self.btv.get_device_properties()
+            self.assertDictEqual({}, device_properties)
+
     @awaiter
     async def test_awake(self):
         """Check that the ``awake`` property works correctly.
