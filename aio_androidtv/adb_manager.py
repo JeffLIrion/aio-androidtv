@@ -1,6 +1,7 @@
 """Classes to manage ADB connections.
 
 * :py:class:`ADBPython` utilizes a Python implementation of the ADB protocol.
+* :py:class:`ADBServer` utilizes an ADB server to communicate with the device.
 
 """
 
