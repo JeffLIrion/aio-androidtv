@@ -367,6 +367,7 @@ class TestAndroidTVPython(unittest.TestCase):
             audio_output_device = await self.atv.audio_output_device()
             self.assertEqual('hmdi_arc', audio_output_device)
 
+    @awaiter
     async def test_volume(self):
         """Check that the ``volume`` property works correctly.
 
@@ -821,6 +822,17 @@ class TestAndroidTVPython(unittest.TestCase):
 
         await self.assertUpdate([True, True, constants.STATE_IDLE, 3, 'unknown', None, 'hmdi_arc', False, 30, None],
                                 (constants.STATE_IDLE, 'unknown', ['unknown'], 'hmdi_arc', False, 0.5))
+
+
+class TestAndroidTVServer(TestAndroidTVPython):
+    PATCH_KEY = 'server'
+    ADB_ATTR = '_adb_device'
+
+    @awaiter
+    async def setUp(self):
+        with patchers.patch_connect(True)[self.PATCH_KEY], patchers.patch_shell('')[self.PATCH_KEY]:
+            self.atv = AndroidTV('HOST', 5555, adb_server_ip='ADB_SERVER_IP')
+            await self.atv.adb_connect()
 
 
 class TestStateDetectionRulesValidator(unittest.TestCase):

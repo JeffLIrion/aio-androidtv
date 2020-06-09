@@ -14,7 +14,7 @@ setup(
     author='Jeff Irion',
     author_email='jefflirion@users.noreply.github.com',
     packages=['aio_androidtv'],
-    install_requires=['aio-adb-shell'],
+    install_requires=['aio-adb-shell', 'pure-python-adb'],
     python_requires='>=3.7',
     classifiers=[
         'License :: OSI Approved :: MIT License',

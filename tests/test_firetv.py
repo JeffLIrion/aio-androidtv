@@ -175,7 +175,7 @@ class TestFireTVPython(unittest.TestCase):
         """Test that the ``FireTV.launch_app`` and ``FireTV.stop_app`` methods work correctly.
 
         """
-        with patchers.patch_connect(True)[self.PATCH_KEY], patchers.patch_shell(None)[self.PATCH_KEY]:
+        with patchers.patch_connect(True)[self.PATCH_KEY], patchers.patch_shell('')[self.PATCH_KEY]:
             await self.ftv.launch_app("TEST")
             self.assertEqual(getattr(self.ftv._adb, self.ADB_ATTR).shell_cmd, constants.CMD_LAUNCH_APP.format("TEST"))
 
@@ -462,6 +462,17 @@ class TestFireTVPython(unittest.TestCase):
 
         await self.assertUpdate([True, True, 2, 'unknown', None, ['unknown']],
                                 (constants.STATE_PAUSED, 'unknown', ['unknown']))
+
+
+class TestFireTVServer(TestFireTVPython):
+    ADB_ATTR = '_adb_device'
+    PATCH_KEY = 'server'
+
+    @awaiter
+    async def setUp(self):
+        with patchers.patch_connect(True)[self.PATCH_KEY], patchers.patch_shell('')[self.PATCH_KEY]:
+            self.ftv = FireTV('HOST', 5555, adb_server_ip='ADB_SERVER_IP')
+            await self.ftv.adb_connect()
 
 
 if __name__ == "__main__":

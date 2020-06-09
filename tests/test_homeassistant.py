@@ -4,6 +4,15 @@ import sys
 import unittest
 from unittest.mock import patch
 
+try:
+    from unittest.mock import AsyncMock
+except ImportError:
+    from unittest.mock import MagicMock
+
+    class AsyncMock(MagicMock):
+        async def __call__(self, *args, **kwargs):
+            return super(AsyncMock, self).__call__(*args, **kwargs)
+
 sys.path.insert(0, '..')
 
 from aio_adb_shell.exceptions import (
@@ -112,16 +121,21 @@ class ADBDevice(MediaPlayerDevice):
         self.turn_off_command = turn_off_command
 
         # ADB exceptions to catch
-        self.exceptions = (
-            AttributeError,
-            BrokenPipeError,
-            TypeError,
-            ValueError,
-            InvalidChecksumError,
-            InvalidCommandError,
-            InvalidResponseError,
-            TcpTimeoutException,
-        )
+        if not self.aftv.adb_server_ip:
+            # Using "adb_shell" (Python ADB implementation)
+            self.exceptions = (
+                AttributeError,
+                BrokenPipeError,
+                TypeError,
+                ValueError,
+                InvalidChecksumError,
+                InvalidCommandError,
+                InvalidResponseError,
+                TcpTimeoutException,
+            )
+        else:
+            # Using "pure-python-adb" (communicate with ADB server)
+            self.exceptions = (ConnectionResetError, RuntimeError)
 
         # Property attributes
         self._adb_response = None
@@ -397,7 +411,7 @@ class FireTVDevice(ADBDevice):
 # =========================================================================== #
 
 
-class TestAndroidTVPythonImplementation(unittest.TestCase):
+'''class TestAndroidTVPythonImplementation(unittest.TestCase):
     """Test the androidtv media player for an Android TV device."""
 
     PATCH_KEY = "python"
@@ -561,4 +575,254 @@ class TestADBCommandAndFileSync(unittest.TestCase):
 
         with patchers.patch_shell("1")[patch_key]:
             self.aftv.update()
-            assert self.aftv.state == STATE_IDLE
+            assert self.aftv.state == STATE_IDLE'''
+
+
+# =========================================================================== #
+#                                                                             #
+#                            test_media_player.py                             #
+#                                                                             #
+# =========================================================================== #
+
+
+@unittest.skipIf(sys.version_info.major == 2, "Test requires Python 3")
+class TestAndroidTVPythonImplementation(unittest.TestCase):
+    """Test the androidtv media player for an Android TV device."""
+
+    PATCH_KEY = "python"
+
+    @awaiter
+    async def setUp(self):
+        """Set up an `AndroidTVDevice` media player."""
+        with patchers.PATCH_ADB_DEVICE_TCP, patchers.patch_connect(True)[self.PATCH_KEY], patchers.patch_shell("")[self.PATCH_KEY]:
+            aftv = await setup("HOST", 5555, device_class="androidtv")
+            self.aftv = AndroidTVDevice(aftv, "Fake Android TV", {}, True, None, None)
+
+    @awaiter
+    async def test_reconnect(self):
+        """Test that the error and reconnection attempts are logged correctly.
+
+        "Handles device/service unavailable. Log a warning once when
+        unavailable, log once when reconnected."
+
+        https://developers.home-assistant.io/docs/en/integration_quality_scale_index.html
+        """
+        with self.assertLogs(level=logging.WARNING) as logs:
+            with patchers.patch_connect(False)[self.PATCH_KEY], patchers.patch_shell(error=True)[self.PATCH_KEY]:
+                for _ in range(5):
+                    await self.aftv.update()
+                    self.assertFalse(self.aftv.available)
+                    self.assertIsNone(self.aftv.state)
+
+        assert len(logs.output) == 2
+        assert logs.output[0].startswith("ERROR")
+        assert logs.output[1].startswith("WARNING")
+
+        with self.assertLogs(level=logging.DEBUG) as logs:
+            with patchers.patch_connect(True)[self.PATCH_KEY], patchers.patch_shell("")[self.PATCH_KEY]:
+                # Update 1 will reconnect
+                await self.aftv.update()
+                self.assertTrue(self.aftv.available)
+                self.assertIsNotNone(self.aftv.state)
+
+        assert (
+            "ADB connection to {}:{} successfully established".format(self.aftv.aftv.host, self.aftv.aftv.port)
+            in logs.output[0]
+        )
+
+    @awaiter
+    async def test_adb_shell_returns_none(self):
+        """Test the case that the ADB shell command returns `None`.
+
+        The state should be `None` and the device should be unavailable.
+        """
+        with patchers.patch_shell(None)[self.PATCH_KEY]:
+            await self.aftv.update()
+            self.assertFalse(self.aftv.available)
+            self.assertIsNone(self.aftv.state)
+
+        with patchers.patch_connect(True)[self.PATCH_KEY], patchers.patch_shell("")[self.PATCH_KEY]:
+            # Update 1 will reconnect
+            await self.aftv.update()
+            self.assertTrue(self.aftv.available)
+            self.assertIsNotNone(self.aftv.state)
+
+
+@unittest.skipIf(sys.version_info.major == 2, "Test requires Python 3")
+class TestAndroidTVServerImplementation(unittest.TestCase):
+    """Test the androidtv media player for an Android TV device."""
+
+    PATCH_KEY = "server"
+
+    @awaiter
+    async def setUp(self):
+        """Set up an `AndroidTVDevice` media player."""
+        with patchers.patch_connect(True)[self.PATCH_KEY], patchers.patch_shell("")[self.PATCH_KEY]:
+            aftv = await setup(
+                "HOST", 5555, adb_server_ip="ADB_SERVER_IP", device_class="androidtv"
+            )
+            self.aftv = AndroidTVDevice(aftv, "Fake Android TV", {}, True, None, None)
+
+    @awaiter
+    async def test_reconnect(self):
+        """Test that the error and reconnection attempts are logged correctly.
+
+        "Handles device/service unavailable. Log a warning once when
+        unavailable, log once when reconnected."
+
+        https://developers.home-assistant.io/docs/en/integration_quality_scale_index.html
+        """
+        with self.assertLogs(level=logging.WARNING) as logs:
+            with patchers.patch_connect(False)[self.PATCH_KEY], patchers.patch_shell(error=True)[self.PATCH_KEY]:
+                for _ in range(5):
+                    await self.aftv.update()
+                    self.assertFalse(self.aftv.available)
+                    self.assertIsNone(self.aftv.state)
+
+        assert len(logs.output) == 2
+        assert logs.output[0].startswith("ERROR")
+        assert logs.output[1].startswith("WARNING")
+
+        with self.assertLogs(level=logging.DEBUG) as logs:
+            with patchers.patch_connect(True)[self.PATCH_KEY], patchers.patch_shell("")[self.PATCH_KEY]:
+                await self.aftv.update()
+                self.assertTrue(self.aftv.available)
+                self.assertIsNotNone(self.aftv.state)
+
+        assert (
+            "ADB connection to {}:{} via ADB server {}:{} successfully established".format(
+                self.aftv.aftv.host,
+                self.aftv.aftv.port,
+                self.aftv.aftv.adb_server_ip,
+                self.aftv.aftv.adb_server_port,
+            )
+            in logs.output[0]
+        )
+
+    @awaiter
+    async def test_adb_shell_returns_none(self):
+        """Test the case that the ADB shell command returns `None`.
+
+        The state should be `None` and the device should be unavailable.
+        """
+        with patchers.patch_shell(None)[self.PATCH_KEY]:
+            await self.aftv.update()
+            self.assertFalse(self.aftv.available)
+            self.assertIsNone(self.aftv.state)
+
+        with patchers.patch_connect(True)[self.PATCH_KEY], patchers.patch_shell("")[self.PATCH_KEY]:
+            await self.aftv.update()
+            self.assertTrue(self.aftv.available)
+            self.assertIsNotNone(self.aftv.state)
+
+
+@unittest.skipIf(sys.version_info.major == 2, "Test requires Python 3")
+class TestFireTVPythonImplementation(TestAndroidTVPythonImplementation):
+    """Test the androidtv media player for a Fire TV device."""
+
+    @awaiter
+    async def setUp(self):
+        """Set up a `FireTVDevice` media player."""
+        with patchers.PATCH_ADB_DEVICE_TCP, patchers.patch_connect(True)[self.PATCH_KEY], patchers.patch_shell("")[self.PATCH_KEY]:
+            aftv = await setup("HOST", 5555, device_class="firetv")
+            self.aftv = FireTVDevice(aftv, "Fake Fire TV", {}, True, None, None)
+
+
+@unittest.skipIf(sys.version_info.major == 2, "Test requires Python 3")
+class TestFireTVServerImplementation(TestAndroidTVServerImplementation):
+    """Test the androidtv media player for a Fire TV device."""
+
+    @awaiter
+    async def setUp(self):
+        """Set up a `FireTVDevice` media player."""
+        with patchers.patch_connect(True)[self.PATCH_KEY], patchers.patch_shell("")[self.PATCH_KEY]:
+            aftv = await setup(
+                "HOST", 5555, adb_server_ip="ADB_SERVER_IP", device_class="firetv"
+            )
+            self.aftv = FireTVDevice(aftv, "Fake Fire TV", {}, True, None, None)
+
+
+@unittest.skipIf(sys.version_info.major == 2, "Test requires Python 3")
+class TestADBCommandAndFileSync(unittest.TestCase):
+    """Test ADB and FileSync services."""
+
+    @awaiter
+    async def test_adb_command(self):
+        """Test sending a command via the `androidtv.adb_command` service."""
+        patch_key = "server"
+        command = "test command"
+        response = "test response"
+
+        with patchers.patch_connect(True)[patch_key], patchers.patch_shell("")[patch_key]:
+            aftv = await setup(
+                "HOST", 5555, adb_server_ip="ADB_SERVER_IP", device_class="androidtv"
+            )
+            self.aftv = AndroidTVDevice(aftv, "Fake Android TV", {}, True, None, None)
+
+        with patch("aio_androidtv.basetv.BaseTV.adb_shell", return_value=response, new_callable=AsyncMock) as patch_shell:
+            await self.aftv.adb_command(command)
+
+            patch_shell.assert_called_with(command)
+            assert self.aftv._adb_response == response
+
+    @awaiter
+    async def test_adb_command_key(self):
+        """Test sending a key command via the `androidtv.adb_command` service."""
+        patch_key = "server"
+        command = "HOME"
+        response = None
+
+        with patchers.patch_connect(True)[patch_key], patchers.patch_shell("")[patch_key]:
+            aftv = await setup(
+                "HOST", 5555, adb_server_ip="ADB_SERVER_IP", device_class="androidtv"
+            )
+            self.aftv = AndroidTVDevice(aftv, "Fake Android TV", {}, True, None, None)
+
+        with patch("aio_androidtv.basetv.BaseTV.adb_shell", return_value=response, new_callable=AsyncMock) as patch_shell:
+            await self.aftv.adb_command(command)
+
+            patch_shell.assert_called_with("input keyevent {}".format(self.aftv._keys[command]))
+            assert self.aftv._adb_response is None
+
+    @awaiter
+    async def test_adb_command_get_properties(self):
+        """Test sending the "GET_PROPERTIES" command via the `androidtv.adb_command` service."""
+        patch_key = "server"
+        command = "GET_PROPERTIES"
+        response = {"key": "value"}
+
+        with patchers.patch_connect(True)[patch_key], patchers.patch_shell("")[patch_key]:
+            aftv = await setup(
+                "HOST", 5555, adb_server_ip="ADB_SERVER_IP", device_class="androidtv"
+            )
+            self.aftv = AndroidTVDevice(aftv, "Fake Android TV", {}, True, None, None)
+
+        with patch("aio_androidtv.androidtv.AndroidTV.get_properties_dict", return_value=response, new_callable=AsyncMock) as patch_get_props:
+            await self.aftv.adb_command(command)
+
+            assert patch_get_props.called
+            assert self.aftv._adb_response == str(response)
+
+    @awaiter
+    async def test_update_lock_not_acquired(self):
+        """Test that the state does not get updated when a `LockNotAcquiredException` is raised."""
+        patch_key = "server"
+
+        with patchers.patch_connect(True)[patch_key], patchers.patch_shell("")[patch_key]:
+            aftv = await setup(
+                "HOST", 5555, adb_server_ip="ADB_SERVER_IP", device_class="androidtv"
+            )
+            self.aftv = AndroidTVDevice(aftv, "Fake Android TV", {}, True, None, None)
+
+        with patchers.patch_shell("")[patch_key]:
+            await self.aftv.update()
+            assert self.aftv.state == STATE_OFF
+
+        with patch("aio_androidtv.androidtv.AndroidTV.update", side_effect=LockNotAcquiredException, new_callable=AsyncMock):
+            with patchers.patch_shell("1")[patch_key]:
+                await self.aftv.update()
+                assert self.aftv.state == STATE_OFF
+
+        with patchers.patch_shell("1")[patch_key]:
+            await self.aftv.update()
+            assert self.aftv.state == STATE_STANDBY

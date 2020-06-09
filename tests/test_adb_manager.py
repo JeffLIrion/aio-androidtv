@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, '..')
 
-from aio_androidtv.adb_manager import _acquire, ADBPython
+from aio_androidtv.adb_manager import _acquire, ADBPython, ADBServer
 from aio_androidtv.exceptions import LockNotAcquiredException
 
 from . import patchers
@@ -322,6 +322,35 @@ class TestADBPython(unittest.TestCase):
 
                 with patchers.patch_shell(PNG_IMAGE_NEEDS_REPLACING)[self.PATCH_KEY]:
                     self.assertEqual(await self.adb.screencap(), PNG_IMAGE)
+
+            else:
+                with patch.object(self.adb._adb_device, 'screencap', return_value=PNG_IMAGE):
+                    self.assertEqual(await self.adb.screencap(), PNG_IMAGE)
+
+
+class TestADBServer(TestADBPython):
+    """Test the `ADBServer` class."""
+
+    PATCH_KEY = 'server'
+
+    def setUp(self):
+        """Create an `ADBServer` instance.
+
+        """
+        self.adb = ADBServer('HOST', 5555, 'ADB_SERVER_IP')
+
+    @awaiter
+    async def test_connect_fail_server(self):
+        """Test that the ``connect`` method works correctly.
+
+        """
+        with patchers.patch_connect(True)[self.PATCH_KEY]:
+            self.assertTrue(await self.adb.connect())
+
+        with patch('{}.patchers.ClientFakeSuccess.devices'.format(__name__), side_effect=RuntimeError):
+            self.assertFalse(await self.adb.connect())
+            self.assertFalse(self.adb.available)
+            self.assertFalse(self.adb._available)
 
 
 class TestADBPythonWithAuthentication(unittest.TestCase):

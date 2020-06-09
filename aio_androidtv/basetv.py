@@ -8,7 +8,7 @@ import logging
 import re
 
 from . import constants
-from .adb_manager import ADBPython
+from .adb_manager import ADBPython, ADBServer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,15 +56,21 @@ class BaseTV(object):
         The device port to which we are connecting (default is 5555)
     adbkey : str
         The path to the ``adbkey`` file for ADB authentication
+    adb_server_ip : str
+        The IP address of the ADB server
+    adb_server_port : int
+        The port for the ADB server
     state_detection_rules : dict, None
         A dictionary of rules for determining the state (see above)
 
     """
 
-    def __init__(self, host, port=5555, adbkey='', state_detection_rules=None):
+    def __init__(self, host, port=5555, adbkey='', adb_server_ip='', adb_server_port=5037, state_detection_rules=None):
         self.host = host
         self.port = int(port)
         self.adbkey = adbkey
+        self.adb_server_ip = adb_server_ip
+        self.adb_server_port = adb_server_port
         self._state_detection_rules = state_detection_rules
         self.device_properties = {}
 
@@ -79,7 +85,12 @@ class BaseTV(object):
         self.max_volume = None
 
         # the handler for ADB commands
-        self._adb = ADBPython(host, port, adbkey)
+        if not adb_server_ip:
+            # python-adb
+            self._adb = ADBPython(host, port, adbkey)
+        else:
+            # pure-python-adb
+            self._adb = ADBServer(host, port, adb_server_ip, adb_server_port)
 
     # ======================================================================= #
     #                                                                         #
@@ -101,7 +112,8 @@ class BaseTV(object):
     async def adb_shell(self, cmd):
         """Send an ADB command.
 
-        This calls :py:meth:`aio_androidtv.adb_manager.ADBPython.shell`.
+        This calls :py:meth:`aio_androidtv.adb_manager.ADBPython.shell` or :py:meth:`aio_androidtv.adb_manager.ADBServer.shell`,
+        depending on whether the Python ADB implementation or an ADB server is used for communicating with the device.
 
         Parameters
         ----------
@@ -119,7 +131,8 @@ class BaseTV(object):
     async def adb_pull(self, local_path, device_path):
         """Pull a file from the device.
 
-        This calls :py:meth:`aio_androidtv.adb_manager.ADBPython.pull`.
+        This calls :py:meth:`aio_androidtv.adb_manager.ADBPython.pull` or :py:meth:`aio_androidtv.adb_manager.ADBServer.pull`,
+        depending on whether the Python ADB implementation or an ADB server is used for communicating with the device.
 
         Parameters
         ----------
@@ -134,7 +147,8 @@ class BaseTV(object):
     async def adb_push(self, local_path, device_path):
         """Push a file to the device.
 
-        This calls :py:meth:`aio_androidtv.adb_manager.ADBPython.push`.
+        This calls :py:meth:`aio_androidtv.adb_manager.ADBPython.push` or :py:meth:`aio_androidtv.adb_manager.ADBServer.push`,
+        depending on whether the Python ADB implementation or an ADB server is used for communicating with the device.
 
         Parameters
         ----------
@@ -149,7 +163,8 @@ class BaseTV(object):
     async def adb_screencap(self):
         """Take a screencap.
 
-        This calls :py:meth:`aio_androidtv.adb_manager.ADBPython.screencap`.
+        This calls :py:meth:`aio_androidtv.adb_manager.ADBPython.screencap` or :py:meth:`aio_androidtv.adb_manager.ADBServer.screencap`,
+        depending on whether the Python ADB implementation or an ADB server is used for communicating with the device.
 
         Returns
         -------
@@ -177,9 +192,13 @@ class BaseTV(object):
         """
         if isinstance(self._adb, ADBPython):
             return await self._adb.connect(always_log_errors, auth_timeout_s)
+        return await self._adb.connect(always_log_errors)
 
     async def adb_close(self):
         """Close the ADB connection.
+
+        This only works for the Python ADB implementation (see :meth:`aio_androidtv.adb_manager.ADBPython.close`).
+        For the ADB server approach, this doesn't do anything (see :meth:`aio_androidtv.adb_manager.ADBServer.close`).
 
         """
         await self._adb.close()
